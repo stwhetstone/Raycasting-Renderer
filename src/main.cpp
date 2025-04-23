@@ -3,6 +3,8 @@
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_main.h"
 
+#include "Vec2f.hpp"
+
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 
@@ -20,6 +22,8 @@ int main(int argc, char **argv) {
 	}
 	
 	SDL_SetRenderVSync(renderer, 1);
+
+    Vec2f pos(WINDOW_WIDTH / 2.0, WINDOW_HEIGHT / 2.0);
 
     SDL_Event e;
     bool quit = false;
