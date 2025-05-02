@@ -48,6 +48,7 @@ Vec2<int> getLineHeight(const int side,
                     ); 
 unsigned int getColor(const Vec2<int> &mapPos, const int side);
 
+
 int main(int argc, char **argv) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         return -1;
@@ -150,7 +151,6 @@ int main(int argc, char **argv) {
 
             SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 255);
             SDL_RenderLine(renderer, (float)x, lineStart, (float)x, lineEnd);
-
         }
 
         SDL_SetRenderTarget(renderer, nullptr);
