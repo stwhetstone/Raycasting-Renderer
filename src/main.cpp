@@ -70,14 +70,17 @@ int main(int argc, char **argv) {
 
         SDL_SetRenderTarget(renderer, texture);
 
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
         for(int x = 0; x < WINDOW_WIDTH; x++) {
             // current point on camera plane
             // makes left side of screen -1, center 0, right side 1
-            const double cameraX = 2 * x / (double) WINDOW_WIDTH - 1;
+            const float cameraX = 2 * x / (float) WINDOW_WIDTH - 1;
             Vec2<float> rayDir = dir + cameraPlane * cameraX;
             
             // what square of the map are we in
-            Vec2<int> mapPos((int)pos.x(), (int)pos.y());
+            Vec2<int> mapPos((int)pos.x, (int)pos.y);
             // distance from original point in x/y direction to some side of a cell that the ray is currently intersection
             Vec2<float> sideDist; 
             // distance to move if you wanted to go 1 space in the x/y direction
@@ -90,53 +93,118 @@ int main(int argc, char **argv) {
             // rayUnitStepSize.x = sqrt( (dx/dx)^2 + (dy / dx)^2 ) = sqrt( 1 + (0.66)^2 )
             // rayUnitStepSize.y = sqrt( (dy/dy)^2 + (dx / dy)^2 ) = sqrt( 1 + (1.515) ^2 )
             Vec2<float> rayUnitStepSize(
-                                    rayDir.x() == 0 ? 1e30 : std::sqrt( 1 + (rayDir.y() * rayDir.y()) / (rayDir.x() * rayDir.x()) ),
-                                    rayDir.y() == 0 ? 1e30 : std::sqrt( 1 + (rayDir.x() * rayDir.x()) / (rayDir.y() * rayDir.y()) )
+                                    rayDir.x == 0 ? 1e30 : std::sqrt( 1 + (rayDir.y * rayDir.y) / (rayDir.x * rayDir.x) ),
+                                    rayDir.y == 0 ? 1e30 : std::sqrt( 1 + (rayDir.x * rayDir.x) / (rayDir.y * rayDir.y) )
                                 );
             // the direction that the ray moves in
             Vec2<int> step;
 
-            bool hit = false;
-            int side = 0;
-
             // distance between nearest x side in direction of rayDir and current point
-            if(rayDir.x() < 0) {
-                step.x(-1);
-                sideDist.x( (pos.x() - mapPos.x()) * rayUnitStepSize.x() );
-            } else if (rayDir.x() >= 0) {
-                step.x(1);
-                sideDist.x( (mapPos.x() + 1.0f - pos.x()) * rayUnitStepSize.x() );
+            if(rayDir.x < 0) {
+                step.x = -1;
+                sideDist.x = (pos.x - mapPos.x) * rayUnitStepSize.x;
+            } else if (rayDir.x >= 0) {
+                step.x = 1;
+                sideDist.x = (mapPos.x + 1.0f - pos.x) * rayUnitStepSize.x;
             }
 
             // distance between nearest y side in direction of rayDir and current point
-            if(rayDir.y() < 0) {
-                step.y(-1);
-                sideDist.y( (pos.y() - mapPos.y()) * rayUnitStepSize.y() );
-            } else if (rayDir.y() >= 0) {
-                step.y(1);
-                sideDist.y( (mapPos.y() + 1.0f - pos.y()) * rayUnitStepSize.y() );
+            if(rayDir.y < 0) {
+                step.y = -1;
+                sideDist.y = (pos.y - mapPos.y) * rayUnitStepSize.y;
+            } else if (rayDir.y >= 0) {
+                step.y = 1;
+                sideDist.y = (mapPos.y + 1.0f - pos.y) * rayUnitStepSize.y;
             }
 
+
+            bool hit = false;
+            int side = 0;
             // DDA 
             while(!hit) {
-                if(sideDist.x() < sideDist.y()) {
+                if(sideDist.x < sideDist.y) {
                     // move the ray 1 unit in the x direction and rayDir.y / rayDir.x in the y direction
-                    sideDist.x( sideDist.x() + rayUnitStepSize.x() );
+                    sideDist.x += rayUnitStepSize.x;
                     // move mapPos to the next square in the x direction
-                    mapPos.x( mapPos.x() + step.x());
+                    mapPos.x += step.x;
                     side = 0;
-                } else if(sideDist.x() >= sideDist.y()) {
+                } else if(sideDist.x >= sideDist.y) {
                     // move the ray 1 unit in the y direction and rayDir.x / rayDir.y in the x direction
-                    sideDist.y( sideDist.y() + rayUnitStepSize.y() );
+                    sideDist.y += rayUnitStepSize.y;
                     // move mapPos to the next square in the y direction
-                    mapPos.y( mapPos.y() + step.y());
+                    mapPos.y += step.y;
                     side = 1;
                 }
 
-                if(worldMap[mapPos.x()][mapPos.y()] > 0) {
+                if(worldMap[mapPos.x][mapPos.y] > 0) {
                     hit = true;
                 }
             }
+
+
+
+            float wallDist = 0.0f;
+            if(side == 0) {
+                wallDist = sideDist.x - rayUnitStepSize.x;
+            } else if(side == 1) {
+                wallDist = sideDist.y - rayUnitStepSize.y;
+            }
+    
+            // angle to fix fisheye lens
+            float angle = atan2(dir.x, dir.y) - atan2(rayDir.x, rayDir.y);
+            int lineHeight = WINDOW_HEIGHT / (wallDist * cos(angle));
+
+            int lineStart = -lineHeight / 2 + WINDOW_HEIGHT / 2;
+            if(lineStart < 0) {
+                lineStart = 0;
+            }
+
+            int lineEnd = lineHeight / 2 + WINDOW_HEIGHT / 2;
+            if(lineEnd >= WINDOW_HEIGHT) {
+                lineEnd = WINDOW_HEIGHT - 1;
+            }
+
+            int r = 0, g = 0, b = 0;
+            switch(worldMap[mapPos.x][mapPos.y]) {
+                case 1:
+                    r = 255;
+                    break;
+                case 2:
+                    g = 255;
+                    break;
+                case 3:
+                    b = 255;
+                    break;
+                case 4:
+                    r = 255;
+                    g = 255;
+                    b = 255;
+                    break;
+                default:
+                    r = 255;
+                    g = 255;
+                    break;
+            }
+
+            if(side == 1) {
+                r /= 2;
+                g /= 2;
+                b /= 2;
+            }
+
+            SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+            SDL_RenderLine(renderer, (float)x, lineStart, (float)x, lineEnd);
+
+
+            float rotSpeed = 0.000005f;
+            float oldDirX = dir.x;
+            dir.x = oldDirX * cos(-rotSpeed) - dir.y * sin(-rotSpeed);
+            dir.y = oldDirX * sin(-rotSpeed) + dir.y * cos(-rotSpeed);
+
+            float oldPlaneX = cameraPlane.x;
+            cameraPlane.x = oldPlaneX * cos(-rotSpeed) - cameraPlane.y * sin(-rotSpeed);
+            cameraPlane.y = oldPlaneX * sin(-rotSpeed) + cameraPlane.y * cos(-rotSpeed);
+
             
         }
 
