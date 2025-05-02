@@ -224,7 +224,7 @@ Vec2<int> getLineHeight(
         lineEnd = WINDOW_HEIGHT - 1;
     }
 
-    return (Vec2<int>){lineStart, lineEnd};
+    return Vec2<int>(lineStart, lineEnd);
 }
 
 unsigned int getColor(const Vec2<int> &mapPos, const int side) {
