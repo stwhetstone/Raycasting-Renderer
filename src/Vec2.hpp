@@ -7,125 +7,89 @@
 template <typename T>
 class Vec2 {
     public:
-        float length;
+        T x, y;
 
         Vec2() {
-            this->_x = 0;
-            this->_y = 0;
-            
-            this->length = 0;
+            this->x = 0;
+            this->y = 0;
         }
         
         Vec2(T x, T y) {
-            this->_x = x;
-            this->_y = y;
-            
-            this->length = std::sqrt(this->_x * this->_x + this->_y * this->_y);
+            this->x = x;
+            this->y = y;
         }
+
 
         static void rotate(Vec2& v, Vec2& center, T angle) {
-            T tmpx = v.x(), tmpy = v.y(); 
-            v.x(center.x() + ((tmpx - center.x()) * cos(angle) - (tmpy - center.y()) * sin(angle)));
-			v.y(center.y() + ((tmpx - center.x()) * sin(angle) + (tmpy - center.y()) * cos(angle)));
+            T tmpx = v.x, tmpy = v.y; 
+            v.x = center.x + ((tmpx - center.x) * cos(angle) - (tmpy - center.y) * sin(angle));
+			v.y = center.y + ((tmpx - center.x) * sin(angle) + (tmpy - center.y) * cos(angle));
         }
 
-        T x() {
-            return this->_x;
-        }
-        
-        void x(T x) {
-            this->_x = x;
-            this->length = std::sqrt(this->_x * this->_x + this->_y * this->_y);
-        }
 
-        T y() {
-            return this->_y;
-        }
-        
-        void y(T y) {
-            this->_y = y;
-            this->updateLength();
-        }
-
-        void limit(T max) {
-            if(this->_x >= 0) {
-                this->_x = std::min(this->_x, max);
-            } else if(this->_x < 0) {
-                this->_x = std::max(this->_x, -1.0f * max);
-            }
-        
-            if(this->_y >= 0) {
-                this->_y = std::min(this->_y, max);
-            } else if(this->_y < 0) {
-                this->_y = std::max(this->_y, -1.0f * max);
-            }
+        float length() {
+            return std::sqrt(this->x * this->x + this->y * this->y);
         }
 
         void normalize() {
-            this->_x /= this->length;
-            this->_y /= this->length;
+            this->x /= length();
+            this->y /= length();
         }
+
+        void limit(T max) {
+            if(this->x >= 0) {
+                this->x = std::min(this->x, max);
+            } else if(this->x < 0) {
+                this->x = std::max(this->x, -1.0f * max);
+            }
         
+            if(this->y >= 0) {
+                this->y = std::min(this->y, max);
+            } else if(this->y < 0) {
+                this->y = std::max(this->y, -1.0f * max);
+            }
+        }
+
+
         Vec2 operator + (Vec2 other) {
-            return Vec2(this->_x + other.x(), this->_y + other.y());
+            return Vec2(this->x + other.x, this->y + other.y);
         }
 
         Vec2 operator - (Vec2 other) {
-            return Vec2(this->_x - other.x(), this->_y - other.y());
+            return Vec2(this->x - other.x, this->y - other.y);
         }
 
         Vec2 operator * (T a) {
-            return Vec2(this->_x * a, this->_y * a );
+            return Vec2(this->x * a, this->y * a );
         }
 
         Vec2 operator / (T a) {
-            return Vec2(this->_x / a, this->_y / a );
+            return Vec2(this->x / a, this->y / a );
         }
         
         void operator += (Vec2 other) {
-            this->_x += other.x();
-            this->_y += other.y();
-            
-            this->updateLength();
+            this->x += other.x;
+            this->y += other.y;
         }
 
         void operator -= (Vec2 other) {
-            this->_x -= other.x();
-            this->_y -= other.y();
-            
-            this->updateLength();
+            this->x -= other.x;
+            this->y -= other.y;
         }
 
         void operator *= (T a) {
-            this->_x *= a;
-            this->_y *= a;
-            
-            this->updateLength();
+            this->x *= a;
+            this->y *= a;
         }
 
         void operator /= (T a) {
-            this->_x /= a;
-            this->_y /= a;
-            
-            this->updateLength();
+            this->x /= a;
+            this->y /= a;
         }
 
         void operator = (Vec2 a) {
-            this->_x = a.x();
-            this->_y = a.y();
-            
-            this->updateLength();
+            this->x = a.x;
+            this->y = a.y;
         }
-        
-    private:
-        T _x, _y;
-        
-        void updateLength() {
-            this->length = std::sqrt(this->_x * this->_x + _y * this->_y);
-
-        }
-    
-        
-        
 };
 #endif
