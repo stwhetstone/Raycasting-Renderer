@@ -1,4 +1,4 @@
-#include <iostream>
+#include <cmath>
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_main.h"
@@ -39,6 +39,14 @@ const int worldMap[MAP_WIDTH][MAP_HEIGHT] = {
 };
 
 
+void handleInput(bool &quit, Vec2<float> &pos, Vec2<float> &dir, Vec2<float> &cameraPlane);
+Vec2<int> getLineHeight(const int side,
+                    const Vec2<float> &sideDist,
+                    const Vec2<float> &rayUnitStepSize,
+                    const Vec2<float> &dir, 
+                    const Vec2<float> &rayDir
+                    ); 
+unsigned int getColor(const Vec2<int> &mapPos, const int side);
 
 int main(int argc, char **argv) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
@@ -55,18 +63,11 @@ int main(int argc, char **argv) {
 
     SDL_SetRenderVSync(renderer, 1);
 
-    SDL_Event e;
+    Vec2<float> pos(4, 4), dir(-1, 0), cameraPlane(0, 1);
+
     bool quit = false;
-
-
-    Vec2<float> pos(22, 12), dir(-1, 0), cameraPlane(0, 0.66);
-
-    while(!quit) {
-        while(SDL_PollEvent(&e) != 0) {
-            if(e.type == SDL_EVENT_QUIT) {
-                quit = true;
-            }
-        }
+    while(!quit) {   
+        handleInput(quit, pos, dir, cameraPlane);
 
         SDL_SetRenderTarget(renderer, texture);
 
@@ -81,8 +82,9 @@ int main(int argc, char **argv) {
             
             // what square of the map are we in
             Vec2<int> mapPos((int)pos.x, (int)pos.y);
-            // distance from original point in x/y direction to some side of a cell that the ray is currently intersection
+            // distance from original point in x/y direction to some side of a cell that the ray is currently intersecting
             Vec2<float> sideDist; 
+
             // distance to move if you wanted to go 1 space in the x/y direction
             // scale x/y so that when x/y = 1, a right triangle is made, then step size is that triangle's hypotenuse
             //
@@ -142,74 +144,14 @@ int main(int argc, char **argv) {
             }
 
 
+            auto [lineStart, lineEnd] = getLineHeight(side, sideDist, rayUnitStepSize, dir, rayDir);
+            unsigned int color = getColor(mapPos, side);
+           
 
-            float wallDist = 0.0f;
-            if(side == 0) {
-                wallDist = sideDist.x - rayUnitStepSize.x;
-            } else if(side == 1) {
-                wallDist = sideDist.y - rayUnitStepSize.y;
-            }
-    
-            // angle to fix fisheye lens
-            float angle = atan2(dir.x, dir.y) - atan2(rayDir.x, rayDir.y);
-            int lineHeight = WINDOW_HEIGHT / (wallDist * cos(angle));
-
-            int lineStart = -lineHeight / 2 + WINDOW_HEIGHT / 2;
-            if(lineStart < 0) {
-                lineStart = 0;
-            }
-
-            int lineEnd = lineHeight / 2 + WINDOW_HEIGHT / 2;
-            if(lineEnd >= WINDOW_HEIGHT) {
-                lineEnd = WINDOW_HEIGHT - 1;
-            }
-
-            int r = 0, g = 0, b = 0;
-            switch(worldMap[mapPos.x][mapPos.y]) {
-                case 1:
-                    r = 255;
-                    break;
-                case 2:
-                    g = 255;
-                    break;
-                case 3:
-                    b = 255;
-                    break;
-                case 4:
-                    r = 255;
-                    g = 255;
-                    b = 255;
-                    break;
-                default:
-                    r = 255;
-                    g = 255;
-                    break;
-            }
-
-            if(side == 1) {
-                r /= 2;
-                g /= 2;
-                b /= 2;
-            }
-
-            SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+            SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 255);
             SDL_RenderLine(renderer, (float)x, lineStart, (float)x, lineEnd);
 
-
-            float rotSpeed = 0.000005f;
-            float oldDirX = dir.x;
-            dir.x = oldDirX * cos(-rotSpeed) - dir.y * sin(-rotSpeed);
-            dir.y = oldDirX * sin(-rotSpeed) + dir.y * cos(-rotSpeed);
-
-            float oldPlaneX = cameraPlane.x;
-            cameraPlane.x = oldPlaneX * cos(-rotSpeed) - cameraPlane.y * sin(-rotSpeed);
-            cameraPlane.y = oldPlaneX * sin(-rotSpeed) + cameraPlane.y * cos(-rotSpeed);
-
-            
         }
-
-        
-
 
         SDL_SetRenderTarget(renderer, nullptr);
         SDL_RenderTexture(renderer, texture, nullptr, nullptr);
@@ -222,4 +164,102 @@ int main(int argc, char **argv) {
     SDL_DestroyWindow(window);
 
     return 0;
+}
+
+
+void handleInput(bool &quit, Vec2<float> &pos, Vec2<float> &dir, Vec2<float> &cameraPlane) {
+    float rotSpeed = 0.05f;
+
+    SDL_Event e;
+    while(SDL_PollEvent(&e) != 0) {
+        if(e.type == SDL_EVENT_QUIT) {
+            quit = true;
+        } else if(e.type == SDL_EVENT_KEY_DOWN) {
+            switch(e.key.key) {
+                case SDLK_UP:
+                    pos += dir;
+                    break;
+                case SDLK_DOWN:
+                    pos -= dir;
+                    break;
+                case SDLK_RIGHT:
+                    Vec2<float>::rotate(dir, -rotSpeed);
+                    Vec2<float>::rotate(cameraPlane, -rotSpeed);
+                    break;
+                case SDLK_LEFT:
+                    Vec2<float>::rotate(dir, rotSpeed);
+                    Vec2<float>::rotate(cameraPlane, rotSpeed);
+                    break;
+
+            }
+        }
+    }
+}
+
+Vec2<int> getLineHeight(
+        const int side,
+        const Vec2<float> &sideDist,
+        const Vec2<float> &rayUnitStepSize,
+        const Vec2<float> &dir, 
+        const Vec2<float> &rayDir
+) {
+    float wallDist = 0.0f;
+    if(side == 0) {
+        wallDist = sideDist.x - rayUnitStepSize.x;
+    } else if(side == 1) {
+        wallDist = sideDist.y - rayUnitStepSize.y;
+    }
+
+    // angle to fix fisheye lens
+    float angle = atan2(dir.x, dir.y) - atan2(rayDir.x, rayDir.y);
+    int lineHeight = WINDOW_HEIGHT / (wallDist * cos(angle));
+
+    int lineStart = -lineHeight / 2 + WINDOW_HEIGHT / 2;
+    if(lineStart < 0) {
+        lineStart = 0;
+    }
+
+    int lineEnd = lineHeight / 2 + WINDOW_HEIGHT / 2;
+    if(lineEnd >= WINDOW_HEIGHT) {
+        lineEnd = WINDOW_HEIGHT - 1;
+    }
+
+    return (Vec2<int>){lineStart, lineEnd};
+}
+
+unsigned int getColor(const Vec2<int> &mapPos, const int side) {
+    unsigned int color = 0;
+    int r = 0, g = 0, b = 0;
+    switch(worldMap[mapPos.x][mapPos.y]) {
+        case 1:
+            r = 255;
+            break;
+        case 2:
+            g = 255;
+            break;
+        case 3:
+            b = 255;
+            break;
+        case 4:
+            r = 255;
+            g = 255;
+            b = 255;
+            break;
+        default:
+            r = 255;
+            g = 255;
+            break;
+    }
+
+    if(side == 1) {
+        r /= 2;
+        g /= 2;
+        b /= 2;
+    }
+
+    color += r << 16;
+    color += g << 8;
+    color += b;
+
+    return color;
 }

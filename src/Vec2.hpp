@@ -26,6 +26,12 @@ class Vec2 {
 			v.y = center.y + ((tmpx - center.x) * sin(angle) + (tmpy - center.y) * cos(angle));
         }
 
+        static void rotate(Vec2& v, T angle) {
+            T tmpx = v.x, tmpy = v.y; 
+            v.x = tmpx * cos(angle) - tmpy * sin(angle);
+			v.y = tmpx * sin(angle) + tmpy * cos(angle);
+        }
+
 
         float length() {
             return std::sqrt(this->x * this->x + this->y * this->y);
